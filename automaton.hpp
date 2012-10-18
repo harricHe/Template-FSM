@@ -223,16 +223,22 @@ namespace meta {
       typedef fsm<typename Fsm::states, N, typename Fsm::terminal> type;
     };
 
-    template <typename C>
+    template <char C>
     class fsm_char {
       typedef typename create<int_<2> >::type tmp1;
-      typedef typename add_trans<tmp1, int_<0>, C, int_<1> >::type tmp2;
+      typedef typename add_trans<tmp1, int_<0>, char_<C>, int_<1> >::type tmp2;
     public:
       typedef typename set_terminal<tmp2, int_<1> >::type type;
     };
 
-    template <typename A, typename B>
+    template <typename A, typename... B>
     class fsm_or {
+    public:
+      typedef typename fsm_or<A, typename fsm_or<B...>::type>::type type;
+    };
+
+    template <typename A, typename B>
+    class fsm_or<A,B> {
       typedef typename merge<A,B>::a a;
       typedef typename merge<A,B>::b b;
       typedef typename merge<A,B>::type ab;
@@ -274,6 +280,32 @@ namespace meta {
       typedef typename add_eps_trans<t4, initial, terminal>::type t5;
     public:
       typedef fsm<typename t5::states, initial, terminal> type;
+    };
+
+    template <char... C>
+    class fsm_string {
+    public:
+      typedef fsm_epsilon type;
+    };
+
+    template <char C, char... T>
+    class fsm_string<C, T...> {
+    public:
+      typedef typename fsm_seq<typename fsm_char<C>::type,
+			       typename fsm_string<T...>::type>::type type;
+    };
+
+    template <char A, char B>
+    class fsm_range {
+    public:
+      typedef typename fsm_or<typename fsm_char<A>::type,
+			      typename fsm_range<A+1, B>::type>::type type;
+    };
+
+    template <char A>
+    class fsm_range<A,A> {
+    public:
+      typedef typename fsm_char<A>::type type;
     };
 
     namespace __closure {
@@ -640,6 +672,35 @@ namespace meta {
     public:
       typedef typename deterministic<typename reverse<typename deterministic<typename reverse<Fsm>::type>::type>::type>::type type;
     };
+
+    namespace operators {
+      template <typename... Fsm1, typename... Fsm2>
+      typename fsm_or<fsm<Fsm1...>, fsm<Fsm2...> >::type
+      operator|(fsm<Fsm1...>, fsm<Fsm2...>) {}
+
+      template <typename... Fsm1, typename... Fsm2>
+      typename fsm_seq<fsm<Fsm1...>, fsm<Fsm2...> >::type
+      operator>>(fsm<Fsm1...>, fsm<Fsm2...>) {}
+
+      template <typename... Fsm>
+      typename fsm_star<fsm<Fsm...> >::type
+      operator*(fsm<Fsm...>) {}
+
+      template <typename... Fsm>
+      typename non_deterministic<typename minimal<fsm<Fsm...> >::type>::type
+      operator!(fsm<Fsm...>) {}
+    }
+
+    namespace predefined {
+      using namespace operators;
+      typedef decltype(!fsm_range<'0','9'>::type()) digit;
+      typedef decltype(!*digit()) integer;
+      typedef decltype(!(*digit() >> fsm_char<','>::type() >> *digit())) floating;
+      typedef decltype(!fsm_or<integer,floating>::type()) number;
+      //typedef decltype(!fsm_range<'a','z'>::type()) alpha;
+      //typedef decltype(!fsm_range<'A','Z'>::type()) ALPHA;
+      //typedef decltype(!fsm_or<ALPHA,alpha>::type()) Alpha;
+    }
   }
 }
 
