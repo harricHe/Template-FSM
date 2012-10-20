@@ -687,7 +687,7 @@ namespace meta {
       operator*(fsm<Fsm...>) {}
 
       template <typename... Fsm>
-      typename non_deterministic<typename minimal<fsm<Fsm...> >::type>::type
+      typename non_deterministic<typename deterministic<fsm<Fsm...> >::type>::type
       operator!(fsm<Fsm...>) {}
     }
 
